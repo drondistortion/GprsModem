@@ -29,7 +29,7 @@ bool GprsModem::_begin(const bool& flag)
 			_s_serial.println((String)"ATZ+IPR=" + S_SPEED);
 			GprsClient::waitResp(2000UL, "OK", _s_serial);
 			_serial.end();
-			delay(1000);
+			delay(100);
 			_s_serial.begin(S_SPEED);
 		}
 	}
