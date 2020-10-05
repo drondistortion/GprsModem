@@ -3,29 +3,14 @@
 //#define H_CAST (*(HardwareSerial*)_serial)
 //#define S_CAST (*(SoftwareSerial*)_serial)
 #define H_SPEED 115200
-#define S_SPEED 57600
-
-//GprsClient::_serial = &HardwareSerial;
-/*
-bool GprsModem::begin(HardwareSerial* serial)
-{
-	_serial = serial;
-	return _begin(true);
-}
-
-bool GprsModem::begin(SoftwareSerial* serial)
-{
-	_s_serial = serial;
-	return _begin(false);
-}
-*/
+#define S_SPEED 9600
 
 bool GprsModem::begin()
 {
-	return _begin(_flag);
+	return _begin(_native_serial);
 }
 
-bool GprsModem::_begin(bool flag)
+bool GprsModem::_begin(const bool& flag)
 {
 	uint32_t rate = _checkRate(flag);
 
@@ -36,12 +21,19 @@ bool GprsModem::_begin(bool flag)
 		if (flag && (rate != H_SPEED)) {
 			_serial.println((String)"ATZ+IPR=" + H_SPEED);
 			GprsClient::waitResp(2000UL, "OK", _serial);
+			_serial.end();
+			delay(100);
+			_serial.begin(H_SPEED);
 		}
 		else if (!flag && (rate != S_SPEED)) {
 			_s_serial.println((String)"ATZ+IPR=" + S_SPEED);
 			GprsClient::waitResp(2000UL, "OK", _s_serial);
+			_serial.end();
+			delay(1000);
+			_s_serial.begin(S_SPEED);
 		}
 	}
+	return true;
 
 
 /*
@@ -55,15 +47,15 @@ bool GprsModem::_begin(bool flag)
 		//_s_serial.println(AT+k
 		_s_serial.begin(115200);
 	}
-*/
 	if (rate != -1)
 		return true;
 	else
 		return false;
+*/
 }
 
 
-uint32_t GprsModem::_checkRate(bool& flag)
+uint32_t GprsModem::_checkRate(const bool& flag)
 {
 	static uint32_t rates[] = {
 		115200, 9600, 57600, 38400, 19200, 74400, 74880,
@@ -79,24 +71,32 @@ uint32_t GprsModem::_checkRate(bool& flag)
 
 		delay(10);
 
-		String resp = "";
+		//String resp = "";
 
 		for (uint8_t j = 0; j < 5; j++) {
 
 			if (flag) {
 				_serial.println("AT");
 				delay(10);
-				resp = _serial.readString();
+				//resp = _serial.readString();
+				if (GprsClient::waitResp(2000UL, "OK", _serial))
+						return rate;
 			}
 			else {
 				_s_serial.println("AT");
 				delay(10);
-				resp = _s_serial.readString();
+				//resp = _s_serial.readString();
+				if (GprsClient::waitResp(2000UL, "OK", _s_serial)) {
+					Serial.println("Softserial");
+					return rate;
+				}
 			}
 
+			/*
 			if (resp.indexOf("OK") > -1) {
 				return rate;
 			}
+			*/
 		}
 	}
 	return -1;

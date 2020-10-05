@@ -14,22 +14,22 @@ constexpr char* START = "AT+CIPSTART=";
 
 #define GPRS_TIMEOUT 4000
 #define SER_TIMEOUT 4000
+
 class GprsModem {
 	public:
-		GprsModem(const HardwareSerial& serial): _serial(serial), _flag(true){;}
-		GprsModem(const SoftwareSerial& serial): _s_serial(serial), _flag(false){;}
+		GprsModem(const HardwareSerial& serial): _serial(serial), _native_serial(true){;}
+		GprsModem(const SoftwareSerial& serial): _s_serial(serial), _native_serial(false){;}
 		bool begin();
 	private:
-		uint32_t _checkRate(bool&);
-		bool _flag;
-		bool _begin(bool);
+		uint32_t _checkRate(const bool&);
+		bool _native_serial;
+		bool _begin(const bool&);
 		const HardwareSerial& _serial;
 		const SoftwareSerial& _s_serial;
 };
 
 class GprsClient: public Client {
 	friend class GprsModem;
-	//friend Stream;
 	public:
 		GprsClient(const HardwareSerial& serial): _serial(serial) {_timeout = GPRS_TIMEOUT;};
 		GprsClient(const SoftwareSerial& serial): _serial(serial) {_timeout = GPRS_TIMEOUT;};
