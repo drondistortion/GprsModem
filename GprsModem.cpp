@@ -34,27 +34,12 @@ bool GprsModem::_begin(const bool& flag)
 		}
 	}
 	return true;
-
-
-/*
-	if (flag) {
-		_serial.end();
-		delay(100);
-		_serial.setTimeout(SER_TIMEOUT);
-		_serial.begin(115200);
-	}
-	else {
-		//_s_serial.println(AT+k
-		_s_serial.begin(115200);
-	}
-	if (rate != -1)
-		return true;
-	else
-		return false;
-*/
 }
 
-
+/*
+ * Checking for current baud rate. Based on TinyGSM code
+ * by Volodymyr Shymanskyy. Thank you, dude.
+ */
 uint32_t GprsModem::_checkRate(const bool& flag)
 {
 	static uint32_t rates[] = {
@@ -71,32 +56,21 @@ uint32_t GprsModem::_checkRate(const bool& flag)
 
 		delay(10);
 
-		//String resp = "";
-
 		for (uint8_t j = 0; j < 5; j++) {
 
 			if (flag) {
 				_serial.println("AT");
 				delay(10);
-				//resp = _serial.readString();
 				if (GprsClient::waitResp(2000UL, "OK", _serial))
 						return rate;
 			}
 			else {
 				_s_serial.println("AT");
 				delay(10);
-				//resp = _s_serial.readString();
 				if (GprsClient::waitResp(2000UL, "OK", _s_serial)) {
-					Serial.println("Softserial");
 					return rate;
 				}
 			}
-
-			/*
-			if (resp.indexOf("OK") > -1) {
-				return rate;
-			}
-			*/
 		}
 	}
 	return -1;
@@ -104,22 +78,24 @@ uint32_t GprsModem::_checkRate(const bool& flag)
 
 bool GprsClient::begin()
 {
-	//_serial.begin(115200);
-
-	//_serial.setTimeout(SER_TIMEOUT);
-	//delay(500);
-
 	_serial.println("AT+CGATT=1");
+
 	if (!waitResp(2000L, "+CGATT:1", _serial)) {
-		//Serial.println("bang!");
 		return false;
 	}
+
 	_serial.println("AT+CGDCONT=1,\"IP\",\"internet\"");
+
 	if (!waitResp(2000L, "OK", _serial))
 		return false;
+
 	_serial.println("AT+CGACT=1,1");
+
 	if (!waitResp(2000L, "OK", _serial))
 		return false;
+
+	// use this to enable sockets. Whole code should be rewritten
+	// if those are enabled.
 	/*
 	_serial.println("AT+CIPMUX=1");
 	if (!waitResp(2000L, "OK", _serial))
@@ -132,9 +108,10 @@ bool GprsClient::begin()
 
 int GprsClient::connect(const char* host, uint16_t port)
 {
-	//Serial.println(_serial.getTimeout());
-	String reqstr = (String)START + "\"" + _protocol + "\""+ ",\"" + host + "\"," + port;
-	//String reqstr = (String)START + ",\"" + host + "\"," + port;
+	String reqstr = (String)START
+		+ "\"" + _protocol + "\""
+		+ ",\"" + host + "\"," + port;
+
 	_serial.println(reqstr);
 
 	while(!_serial.available());
@@ -150,19 +127,20 @@ int GprsClient::connect(const char* host, uint16_t port)
 
 	if (waitResp(2000ul, "OK", _serial))
 		return 1;
+
 	return 0;
 }
 
 int GprsClient::connect(const char* host, uint16_t port, const char* protocol)
 {
-	//Serial.println(_serial.getTimeout());
-
 	_protocol = protocol;
+
 	String reqstr = (String)START + "\""+ _protocol + "\""+ ",\"" + host + "\"," + port;
-	//String reqstr = (String)START + ",\"" + host + "\"," + port;
+
 	_serial.println(reqstr);
 
-	while(!_serial.available());
+	while(!_serial.available()); // is it needed?
+
 
 	if (!waitResp(2000ul, String(CONNECT_STATUS), _serial))
 		return 0;
@@ -170,7 +148,7 @@ int GprsClient::connect(const char* host, uint16_t port, const char* protocol)
 	reqstr = "AT+CIPTMODE=1";
 	_serial.println(reqstr);
 
-	while(!_serial.available());
+	while(!_serial.available()); // is it needed?
 
 
 	if (waitResp(2000ul, "OK", _serial))
@@ -180,11 +158,13 @@ int GprsClient::connect(const char* host, uint16_t port, const char* protocol)
 
 int GprsClient::connect(IPAddress ip, uint16_t port)
 {
+// following ifdefs are copied from TinyGSM by Volodymyr Shymanskyy. Thank you dude.
 #if defined(ESP8266) || defined(ESP32)
 	if (ip == IPAddress((uint32_t)0) || ip == IPAddress(0xFFFFFFFFul)) return 0;
 #else
 	if (ip == IPAddress(0ul) || ip == IPAddress(0xFFFFFFFFul)) return 0;
 #endif
+
 	String addr = "";
 	for (size_t i = 0; i < 4; i++) {
 		if (i)
@@ -222,15 +202,16 @@ size_t GprsClient::write(const uint8_t* buf, size_t size)
 	return _serial.write(buf, size);
 }
 
+// this func had to be implemented with wait.
 int GprsClient::available()
 {
-	//return _serial.available();
-	//delay(1);
 	unsigned long timer = micros();
+
 	while(micros() - timer < 1000UL) {
 		if (_serial.available())
 			return _serial.available();
 	}
+
 	return -1;
 }
 
